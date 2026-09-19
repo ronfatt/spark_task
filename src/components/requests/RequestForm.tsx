@@ -45,7 +45,7 @@ const ALL_LANGUAGES: SupportedLanguage[] = [
 ];
 
 export const RequestForm: React.FC<{ onSuccess?: (newProjectId: string) => void }> = ({ onSuccess }) => {
-  const { submitRequest, setSelectedProjectId, setActiveTab } = useApp();
+  const { submitRequestAsync, setSelectedProjectId, setActiveTab } = useApp();
 
   const [title, setTitle] = useState('');
   const [type, setType] = useState<ProjectType>('营销广告横幅');
@@ -57,6 +57,7 @@ export const RequestForm: React.FC<{ onSuccess?: (newProjectId: string) => void 
     return d.toISOString().split('T')[0];
   });
   const [priority, setPriority] = useState<ProjectPriority>('Medium');
+  const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [referenceFileName, setReferenceFileName] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -81,11 +82,13 @@ export const RequestForm: React.FC<{ onSuccess?: (newProjectId: string) => void 
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setReferenceFileName(e.target.files[0].name);
+      const file = e.target.files[0];
+      setReferenceFile(file);
+      setReferenceFileName(file.name);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       setErrorMessage('请输入创意项目标题');
@@ -99,19 +102,20 @@ export const RequestForm: React.FC<{ onSuccess?: (newProjectId: string) => void 
     setErrorMessage('');
     setIsSubmitting(true);
 
-    const formData: CreativeRequestFormData = {
-      title: title.trim(),
-      type,
-      markets: selectedMarkets,
-      description: description.trim() || '未附带额外制作补充说明。',
-      referenceFileName: referenceFileName || undefined,
-      deadline,
-      priority,
-    };
+    try {
+      const formData: CreativeRequestFormData = {
+        title: title.trim(),
+        type,
+        markets: selectedMarkets,
+        description: description.trim() || '未附带额外制作补充说明。',
+        referenceFile,
+        referenceFileName: referenceFileName || undefined,
+        deadline,
+        priority,
+      };
 
-    const newId = submitRequest(formData);
+      const newId = await submitRequestAsync(formData);
 
-    setTimeout(() => {
       setIsSubmitting(false);
       if (onSuccess) {
         onSuccess(newId);
@@ -119,7 +123,11 @@ export const RequestForm: React.FC<{ onSuccess?: (newProjectId: string) => void 
         setSelectedProjectId(newId);
         setActiveTab('Projects');
       }
-    }, 300);
+    } catch (err) {
+      console.error(err);
+      setIsSubmitting(false);
+      setErrorMessage('提交需求失败，请重试');
+    }
   };
 
   return (
@@ -244,6 +252,7 @@ export const RequestForm: React.FC<{ onSuccess?: (newProjectId: string) => void 
                 onClick={e => {
                   e.stopPropagation();
                   setReferenceFileName('');
+                  setReferenceFile(null);
                 }}
                 className="text-slate-400 hover:text-rose-500 p-1"
               >

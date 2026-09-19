@@ -9,8 +9,10 @@ import {
   Lock, 
   X, 
   LogOut,
-  Eye
+  Eye,
+  Cloud
 } from 'lucide-react';
+import { CloudSyncModal } from '../common/CloudSyncModal';
 
 export const Header: React.FC = () => {
   const { 
@@ -23,10 +25,12 @@ export const Header: React.FC = () => {
     setPhoneFrameEnabled, 
     resetToDemoData,
     setSelectedProjectId,
-    setActiveTab
+    setActiveTab,
+    isCloudConnected
   } = useApp();
 
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
+  const [showCloudModal, setShowCloudModal] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [loginError, setLoginError] = useState('');
 
@@ -94,6 +98,20 @@ export const Header: React.FC = () => {
               className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Supabase 云端状态与连接入口 */}
+            <button
+              onClick={() => setShowCloudModal(true)}
+              title={isCloudConnected ? "Supabase 云端：已连接 (点击管理)" : "配置 Supabase 云端数据库与存储"}
+              className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-semibold transition-colors ${
+                isCloudConnected 
+                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <Cloud className={`w-3.5 h-3.5 ${isCloudConnected ? 'text-emerald-600' : ''}`} />
+              {isCloudConnected && <span className="hidden sm:inline text-[10px] font-bold">云端</span>}
             </button>
 
             {/* 管理员专属控制区（仅当我解锁后可见，普通顾客绝对看不到管理员选项） */}
@@ -221,6 +239,12 @@ export const Header: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Supabase 云端配置弹窗 */}
+      <CloudSyncModal
+        isOpen={showCloudModal}
+        onClose={() => setShowCloudModal(false)}
+      />
     </>
   );
 };

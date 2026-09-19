@@ -4,7 +4,9 @@ import type {
   NavTab, 
   CreativeProject, 
   CreativeRequestFormData, 
-  ProjectStatus 
+  ProjectStatus,
+  FileCategory,
+  SupportedLanguage
 } from '../types';
 
 export interface AppContextType {
@@ -20,15 +22,22 @@ export interface AppContextType {
   phoneFrameEnabled: boolean;
   setPhoneFrameEnabled: (enabled: boolean) => void;
   projects: CreativeProject[];
+  isCloudConnected: boolean;
+  isSyncing: boolean;
+  refreshProjects: () => Promise<void>;
   submitRequest: (formData: CreativeRequestFormData) => string;
+  submitRequestAsync: (formData: CreativeRequestFormData) => Promise<string>;
   acceptProject: (id: string) => void;
   updateProjectProgress: (id: string, progress: number, note?: string) => void;
   updateProjectStatus: (id: string, status: ProjectStatus, note?: string) => void;
   uploadPreview: (id: string, previewUrl: string, previewTitle: string, setInReview?: boolean) => void;
+  uploadPreviewFile: (projectId: string, file: File, title?: string) => Promise<void>;
+  uploadAssetToProject: (projectId: string, file: File, category?: FileCategory, languages?: SupportedLanguage[]) => Promise<void>;
   approveProject: (id: string, note?: string) => void;
   requestChanges: (id: string, feedback: string) => void;
   addComment: (id: string, content: string) => void;
   resetToDemoData: () => void;
+  reconnectCloud: () => Promise<void>;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);

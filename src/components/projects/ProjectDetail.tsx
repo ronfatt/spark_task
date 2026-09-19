@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context';
-import type { ProjectStatus } from '../../types';
+import type { ProjectStatus, FileCategory } from '../../types';
 import { StatusBadge } from '../common/StatusBadge';
 import { PriorityBadge } from '../common/PriorityBadge';
 import { MarketPill } from '../common/MarketPill';
@@ -21,7 +21,9 @@ import {
   Sliders,
   Check,
   Eye,
-  X
+  X,
+  UploadCloud,
+  Film
 } from 'lucide-react';
 
 const STATUS_OPTIONS: { id: ProjectStatus; label: string }[] = [
@@ -32,6 +34,20 @@ const STATUS_OPTIONS: { id: ProjectStatus; label: string }[] = [
   { id: 'On Hold', label: '暂搁置' },
 ];
 
+const DELIVERABLE_CATEGORIES: FileCategory[] = [
+  '交付成品',
+  '品牌规范',
+  '企业物料',
+  '产品界面',
+  '营销推广',
+  '演示提案'
+];
+
+const isVideoUrl = (url?: string) => {
+  if (!url) return false;
+  return /\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(url);
+};
+
 export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> = ({
   projectId,
   onBack,
@@ -41,7 +57,9 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
     currentRole, 
     updateProjectProgress, 
     updateProjectStatus, 
-    uploadPreview, 
+    uploadPreview,
+    uploadPreviewFile,
+    uploadAssetToProject,
     approveProject, 
     requestChanges, 
     addComment 
@@ -58,8 +76,18 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [customUploadModal, setCustomUploadModal] = useState(false);
+  const [previewUploadTab, setPreviewUploadTab] = useState<'file' | 'url'>('file');
+  const [selectedPreviewFile, setSelectedPreviewFile] = useState<File | null>(null);
   const [previewInputUrl, setPreviewInputUrl] = useState('');
   const [previewInputTitle, setPreviewInputTitle] = useState('');
+  const [isUploadingPreview, setIsUploadingPreview] = useState(false);
+
+  // 交付成品物料上传状态
+  const [assetUploadModal, setAssetUploadModal] = useState(false);
+  const [selectedAssetFile, setSelectedAssetFile] = useState<File | null>(null);
+  const [assetCategory, setAssetCategory] = useState<FileCategory>('交付成品');
+  const [isUploadingAsset, setIsUploadingAsset] = useState(false);
+
   const [downloadToast, setDownloadToast] = useState<string | null>(null);
 
   if (!project) {
@@ -111,13 +139,41 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
     }, 2500);
   };
 
-  const handleSavePreviewUpload = () => {
-    const url = previewInputUrl.trim() || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop';
-    const title = previewInputTitle.trim() || '创意初稿设计预览.png';
-    uploadPreview(project.id, url, title, true);
-    setCustomUploadModal(false);
-    setPreviewInputUrl('');
-    setPreviewInputTitle('');
+  const handleSavePreviewUpload = async () => {
+    setIsUploadingPreview(true);
+    try {
+      if (previewUploadTab === 'file' && selectedPreviewFile) {
+        await uploadPreviewFile(project.id, selectedPreviewFile, previewInputTitle.trim() || selectedPreviewFile.name);
+      } else {
+        const url = previewInputUrl.trim() || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop';
+        const title = previewInputTitle.trim() || '创意初稿设计预览.png';
+        uploadPreview(project.id, url, title, true);
+      }
+      setCustomUploadModal(false);
+      setSelectedPreviewFile(null);
+      setPreviewInputUrl('');
+      setPreviewInputTitle('');
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsUploadingPreview(false);
+    }
+  };
+
+  const handleSaveAssetUpload = async () => {
+    if (!selectedAssetFile) return;
+    setIsUploadingAsset(true);
+    try {
+      await uploadAssetToProject(project.id, selectedAssetFile, assetCategory, project.markets);
+      setAssetUploadModal(false);
+      setSelectedAssetFile(null);
+      setDownloadToast(`《${selectedAssetFile.name}》已成功上传归档至云端！`);
+      setTimeout(() => setDownloadToast(null), 3000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsUploadingAsset(false);
+    }
   };
 
   return (
@@ -339,33 +395,48 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
           )}
         </div>
 
-        {/* 预览大图或占位 */}
+        {/* 预览大图/视频或占位 */}
         {project.previewUrl ? (
           <div className="space-y-2">
-            <div 
-              onClick={() => setLightboxOpen(true)}
-              className="group relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-950/5 aspect-video cursor-pointer"
-            >
-              <img
-                src={project.previewUrl}
-                alt={project.previewTitle || '设计预览'}
-                className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
-              />
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-xs font-semibold">
-                <Eye className="w-4 h-4" />
-                <span>点击全屏放大查看</span>
+            {isVideoUrl(project.previewUrl) ? (
+              <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-black aspect-video flex items-center justify-center shadow-inner">
+                <video
+                  src={project.previewUrl}
+                  controls
+                  className="w-full h-full object-contain"
+                />
               </div>
-            </div>
+            ) : (
+              <div 
+                onClick={() => setLightboxOpen(true)}
+                className="group relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-950/5 aspect-video cursor-pointer"
+              >
+                <img
+                  src={project.previewUrl}
+                  alt={project.previewTitle || '设计预览'}
+                  className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-xs font-semibold">
+                  <Eye className="w-4 h-4" />
+                  <span>点击全屏放大查看</span>
+                </div>
+              </div>
+            )}
             {project.previewTitle && (
               <div className="flex items-center justify-between text-xs text-slate-500 px-1">
-                <span className="font-mono font-medium truncate">{project.previewTitle}</span>
-                <button
-                  onClick={() => setLightboxOpen(true)}
-                  className="text-spark-600 font-semibold hover:underline flex items-center gap-1 shrink-0"
-                >
-                  <span>全屏查看</span>
-                  <ExternalLink className="w-3 h-3" />
-                </button>
+                <span className="font-mono font-medium truncate flex items-center gap-1.5">
+                  {isVideoUrl(project.previewUrl) ? <Film className="w-3.5 h-3.5 text-spark-600 shrink-0" /> : null}
+                  {project.previewTitle}
+                </span>
+                {!isVideoUrl(project.previewUrl) && (
+                  <button
+                    onClick={() => setLightboxOpen(true)}
+                    className="text-spark-600 font-semibold hover:underline flex items-center gap-1 shrink-0"
+                  >
+                    <span>全屏查看</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -437,11 +508,21 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
           <h3 className="text-sm font-extrabold text-slate-900">
             交付文件与资产包 ({project.assets.length})
           </h3>
-          <span className="text-[10px] font-bold text-slate-400 uppercase">源文件与成品</span>
+          {currentRole === 'Admin' ? (
+            <button
+              onClick={() => setAssetUploadModal(true)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-spark-50 hover:bg-spark-100 text-spark-700 text-xs font-bold border border-spark-200 transition-colors"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>上传交付资产</span>
+            </button>
+          ) : (
+            <span className="text-[10px] font-bold text-slate-400 uppercase">源文件与成品</span>
+          )}
         </div>
 
         {project.assets.length === 0 ? (
-          <div className="text-center py-4 text-xs text-slate-400">
+          <div className="text-center py-5 text-xs text-slate-400 border-2 border-dashed border-slate-100 rounded-2xl">
             暂未附加可供下载的成品源文件。
           </div>
         ) : (
@@ -472,14 +553,18 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
                   </div>
                 </div>
 
-                <button
-                  type="button"
+                <a
+                  href={asset.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  download={asset.name}
                   onClick={() => handleDownload(asset.name)}
-                  className="p-2 rounded-xl bg-white hover:bg-spark-50 text-slate-600 hover:text-spark-700 border border-slate-200 shadow-2xs transition-colors shrink-0 ml-2"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white hover:bg-spark-50 text-slate-600 hover:text-spark-700 border border-slate-200 shadow-2xs transition-colors shrink-0 text-xs font-bold"
                   title="下载物料文件"
                 >
-                  <Download className="w-4 h-4" />
-                </button>
+                  <Download className="w-3.5 h-3.5 text-spark-600" />
+                  <span className="text-[11px]">下载</span>
+                </a>
               </div>
             ))}
           </div>
@@ -543,107 +628,345 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
 
       {/* 灯箱高清查看弹窗 */}
       {lightboxOpen && project.previewUrl && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4 animate-in fade-in">
+        <div 
+          onClick={() => setLightboxOpen(false)}
+          className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4 animate-in fade-in"
+        >
           <button
             onClick={() => setLightboxOpen(false)}
             className="absolute top-6 right-6 text-white/80 hover:text-white p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
           >
             <X className="w-6 h-6" />
           </button>
-          <img
-            src={project.previewUrl}
-            alt="超清效果预览"
-            className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
-          />
+          
+          <div className="max-w-4xl max-h-[80vh] overflow-hidden rounded-2xl flex items-center justify-center" onClick={e => e.stopPropagation()}>
+            {isVideoUrl(project.previewUrl) ? (
+              <video
+                src={project.previewUrl}
+                controls
+                autoPlay
+                className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
+              />
+            ) : (
+              <img
+                src={project.previewUrl}
+                alt="超清效果预览"
+                className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
+              />
+            )}
+          </div>
           <p className="text-white text-xs font-mono mt-3 opacity-75">
-            {project.previewTitle || '超清效果图'}
+            {project.previewTitle || '效果预览物料'}
           </p>
         </div>
       )}
 
-      {/* 管理员上传效果图弹窗 */}
+      {/* 管理员上传效果图 / 视频弹窗 */}
       {customUploadModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 border border-slate-100">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-extrabold text-slate-900">
-                上传效果图 / 交付初稿
-              </h3>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900">
+                  上传效果图 / 视频初稿
+                </h3>
+                <p className="text-[11px] text-slate-400">自动同步到 Supabase 云端存储 spark-previews</p>
+              </div>
               <button
-                onClick={() => setCustomUploadModal(false)}
-                className="text-slate-400 hover:text-slate-600"
+                onClick={() => {
+                  setCustomUploadModal(false);
+                  setSelectedPreviewFile(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 p-1"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-700 uppercase">
-                物料文件名
-              </label>
-              <input
-                type="text"
-                value={previewInputTitle}
-                onChange={e => setPreviewInputTitle(e.target.value)}
-                placeholder="例如：营销大促横幅_V2_终稿.png"
-                className="w-full px-3 py-2 border rounded-xl text-xs"
-              />
+            {/* 切换方式：本地文件 vs 网络链接 */}
+            <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setPreviewUploadTab('file')}
+                className={`py-1.5 rounded-lg transition-all ${
+                  previewUploadTab === 'file' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500'
+                }`}
+              >
+                本地上传 (图片/视频)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewUploadTab('url')}
+                className={`py-1.5 rounded-lg transition-all ${
+                  previewUploadTab === 'url' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500'
+                }`}
+              >
+                网络链接 / 预设
+              </button>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-700 uppercase">
-                图片网络链接（或选择下方预设）
-              </label>
-              <input
-                type="text"
-                value={previewInputUrl}
-                onChange={e => setPreviewInputUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full px-3 py-2 border rounded-xl text-xs font-mono"
-              />
-            </div>
+            {previewUploadTab === 'file' ? (
+              <div className="space-y-3">
+                <div className="relative border-2 border-dashed border-slate-200 hover:border-spark-400 rounded-2xl p-4 bg-slate-50/50 text-center transition-colors cursor-pointer group">
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={e => {
+                      if (e.target.files && e.target.files[0]) {
+                        const file = e.target.files[0];
+                        setSelectedPreviewFile(file);
+                        if (!previewInputTitle) {
+                          setPreviewInputTitle(file.name);
+                        }
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  {selectedPreviewFile ? (
+                    <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-spark-200">
+                      <div className="flex items-center gap-2 overflow-hidden text-left">
+                        {selectedPreviewFile.type.startsWith('video/') ? (
+                          <Film className="w-5 h-5 text-spark-600 shrink-0" />
+                        ) : (
+                          <UploadCloud className="w-5 h-5 text-spark-600 shrink-0" />
+                        )}
+                        <div className="overflow-hidden">
+                          <p className="text-xs font-bold text-slate-900 truncate">
+                            {selectedPreviewFile.name}
+                          </p>
+                          <p className="text-[10px] text-slate-400">
+                            {(selectedPreviewFile.size / (1024 * 1024)).toFixed(2)} MB • {selectedPreviewFile.type.startsWith('video/') ? '高清视频' : '设计图'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={e => {
+                          e.stopPropagation();
+                          setSelectedPreviewFile(null);
+                        }}
+                        className="text-slate-400 hover:text-rose-500 p-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="py-3 flex flex-col items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-white shadow-2xs flex items-center justify-center text-spark-600 mb-1.5 group-hover:scale-105 transition-transform">
+                        <UploadCloud className="w-5 h-5" />
+                      </div>
+                      <p className="text-xs font-bold text-slate-700">点击选择或拖放设计稿 / 演示视频</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">支持 PNG、JPG、WEBP、MP4、MOV</p>
+                    </div>
+                  )}
+                </div>
 
-            {/* 快速预设 */}
-            <div className="space-y-1">
-              <p className="text-[10px] text-slate-400 font-semibold">快速选用演示初稿图：</p>
-              <div className="grid grid-cols-2 gap-2 text-[10px]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPreviewInputUrl('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop');
-                    setPreviewInputTitle('Spark_3D_全息微光卡面.png');
-                  }}
-                  className="p-2 border rounded-lg hover:bg-slate-50 text-left truncate font-semibold"
-                >
-                  💳 3D 全息卡面
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPreviewInputUrl('https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1200&auto=format&fit=crop');
-                    setPreviewInputTitle('商户移动端开户界面.png');
-                  }}
-                  className="p-2 border rounded-lg hover:bg-slate-50 text-left truncate font-semibold"
-                >
-                  📱 移动端开户流程
-                </button>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 uppercase">
+                    物料展示名称
+                  </label>
+                  <input
+                    type="text"
+                    value={previewInputTitle}
+                    onChange={e => setPreviewInputTitle(e.target.value)}
+                    placeholder="例如：主视觉效果图_V2_终审版.png"
+                    className="w-full px-3 py-2 border rounded-xl text-xs"
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 uppercase">
+                    物料文件名
+                  </label>
+                  <input
+                    type="text"
+                    value={previewInputTitle}
+                    onChange={e => setPreviewInputTitle(e.target.value)}
+                    placeholder="例如：营销大促横幅_V2_终稿.png"
+                    className="w-full px-3 py-2 border rounded-xl text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700 uppercase">
+                    图片/视频网络链接
+                  </label>
+                  <input
+                    type="text"
+                    value={previewInputUrl}
+                    onChange={e => setPreviewInputUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full px-3 py-2 border rounded-xl text-xs font-mono"
+                  />
+                </div>
+
+                {/* 快速预设 */}
+                <div className="space-y-1">
+                  <p className="text-[10px] text-slate-400 font-semibold">快速选用演示初稿：</p>
+                  <div className="grid grid-cols-2 gap-2 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewInputUrl('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop');
+                        setPreviewInputTitle('Spark_3D_全息微光卡面.png');
+                      }}
+                      className="p-2 border rounded-lg hover:bg-slate-50 text-left truncate font-semibold"
+                    >
+                      💳 3D 全息卡面
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewInputUrl('https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=1200&auto=format&fit=crop');
+                        setPreviewInputTitle('商户移动端开户界面.png');
+                      }}
+                      className="p-2 border rounded-lg hover:bg-slate-50 text-left truncate font-semibold"
+                    >
+                      📱 移动端开户流程
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setCustomUploadModal(false)}
-                className="flex-1 py-2.5 border rounded-xl text-xs font-semibold text-slate-600"
+                disabled={isUploadingPreview}
+                className="flex-1 py-2.5 border rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
               >
                 取消
               </button>
               <button
                 type="button"
                 onClick={handleSavePreviewUpload}
-                className="flex-1 py-2.5 bg-spark-600 hover:bg-spark-700 text-white rounded-xl text-xs font-bold shadow-sm"
+                disabled={isUploadingPreview || (previewUploadTab === 'file' && !selectedPreviewFile && !previewInputUrl)}
+                className="flex-1 py-2.5 bg-spark-600 hover:bg-spark-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-1.5"
               >
-                保存并变更为待审核
+                {isUploadingPreview ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>上传中...</span>
+                  </>
+                ) : (
+                  <span>上传并变更为待审核</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 管理员上传交付成品资产弹窗 */}
+      {assetUploadModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 border border-slate-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900">
+                  归档上传最终交付资产
+                </h3>
+                <p className="text-[11px] text-slate-400">自动上传至 Supabase 云端存储 spark-deliverables</p>
+              </div>
+              <button
+                onClick={() => {
+                  setAssetUploadModal(false);
+                  setSelectedAssetFile(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="relative border-2 border-dashed border-slate-200 hover:border-spark-400 rounded-2xl p-4 bg-slate-50/50 text-center transition-colors cursor-pointer group">
+              <input
+                type="file"
+                onChange={e => {
+                  if (e.target.files && e.target.files[0]) {
+                    setSelectedAssetFile(e.target.files[0]);
+                  }
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              {selectedAssetFile ? (
+                <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-spark-200">
+                  <div className="flex items-center gap-2 overflow-hidden text-left">
+                    <FileText className="w-5 h-5 text-spark-600 shrink-0" />
+                    <div className="overflow-hidden">
+                      <p className="text-xs font-bold text-slate-900 truncate">
+                        {selectedAssetFile.name}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {(selectedAssetFile.size / (1024 * 1024)).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      setSelectedAssetFile(null);
+                    }}
+                    className="text-slate-400 hover:text-rose-500 p-1"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="py-3 flex flex-col items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-white shadow-2xs flex items-center justify-center text-spark-600 mb-1.5 group-hover:scale-105 transition-transform">
+                    <UploadCloud className="w-5 h-5" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-700">选择交付资产文件或压缩包</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">支持 ZIP、FIG、PSD、MP4、PDF、PNG 高清源文件</p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-700 uppercase">
+                物料分类
+              </label>
+              <select
+                value={assetCategory}
+                onChange={e => setAssetCategory(e.target.value as FileCategory)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+              >
+                {DELIVERABLE_CATEGORIES.map(cat => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setAssetUploadModal(false)}
+                disabled={isUploadingAsset}
+                className="flex-1 py-2.5 border rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAssetUpload}
+                disabled={isUploadingAsset || !selectedAssetFile}
+                className="flex-1 py-2.5 bg-spark-600 hover:bg-spark-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-1.5"
+              >
+                {isUploadingAsset ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>上传归档中...</span>
+                  </>
+                ) : (
+                  <span>保存并归档到云端</span>
+                )}
               </button>
             </div>
           </div>
