@@ -31,7 +31,10 @@ export const HomeScreen: React.FC = () => {
                 </>
               )}
             </span>
-            <span className="text-[11px] text-slate-300 font-medium">创意协作中心</span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-300 font-medium">
+              <img src="/logo.png" alt="Spark" className="w-4 h-4 rounded object-cover border border-white/20" />
+              <span>创意协作中心</span>
+            </span>
           </div>
 
           <div>

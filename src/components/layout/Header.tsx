@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context';
 import { 
-  Sparkles, 
   Smartphone, 
   Monitor, 
   RotateCcw, 
@@ -59,8 +58,8 @@ export const Header: React.FC = () => {
               }}
               className="flex items-center gap-2.5 text-left group focus:outline-none"
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-spark-600 via-purple-600 to-indigo-700 flex items-center justify-center shadow-md shadow-spark-600/20 group-hover:scale-105 transition-transform">
-                <Sparkles className="w-5 h-5 text-white" />
+              <div className="w-9 h-9 rounded-xl overflow-hidden shadow-md shadow-indigo-600/25 group-hover:scale-105 transition-transform shrink-0 border border-slate-100 bg-indigo-600 flex items-center justify-center">
+                <img src="/logo.png" alt="SparkOne Logo" className="w-full h-full object-cover" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
