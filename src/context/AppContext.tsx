@@ -375,18 +375,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setProjects(prev =>
       prev.map(p => {
         if (p.id !== id) return p;
-        const updateText = note || `制作进度已更新至 ${progress}%。`;
+        const isDone = progress >= 100;
+        const newStatus: ProjectStatus = isDone 
+          ? 'Completed' 
+          : (p.status === 'Completed' ? 'Working' : (p.status === 'Requested' && progress > 0 ? 'Working' : p.status));
+        const updateText = note || (isDone ? '制作进度已达 100%，项目交付完成。' : `制作进度已更新至 ${progress}%。`);
+        
         const newComment: ActivityComment = {
           id: `act-${Date.now()}`,
           author: 'AI 创意总监',
           role: 'Admin',
           content: updateText,
           timestamp: `今天 ${formattedTime}`,
-          type: 'status_change',
+          type: isDone ? 'approved' : 'status_change',
         };
         const updated: CreativeProject = {
           ...p,
           progress,
+          status: newStatus,
+          approvedAt: isDone && !p.approvedAt ? `今天 ${formattedTime}` : p.approvedAt,
           updatedAt: now.toISOString(),
           latestUpdate: updateText,
           activity: [newComment, ...p.activity],
@@ -415,15 +422,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const statusText = note || `项目状态更新为【${statusMap[status]}】。`;
         const newComment: ActivityComment = {
           id: `act-${Date.now()}`,
-          author: currentRole === 'Admin' ? '设计团队' : '客户方',
+          author: currentRole === 'Admin' ? 'AI 创意总监' : '客户方',
           role: currentRole,
           content: statusText,
           timestamp: `今天 ${formattedTime}`,
-          type: 'status_change',
+          type: status === 'Completed' ? 'approved' : 'status_change',
         };
         const updated: CreativeProject = {
           ...p,
           status,
+          progress: status === 'Completed' ? 100 : (p.progress === 100 ? 90 : p.progress),
+          approvedAt: status === 'Completed' && !p.approvedAt ? `今天 ${formattedTime}` : p.approvedAt,
           updatedAt: now.toISOString(),
           latestUpdate: statusText,
           activity: [newComment, ...p.activity],

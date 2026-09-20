@@ -238,7 +238,7 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
                   className="group focus:outline-none"
                   title="点击切换项目状态"
                 >
-                  <StatusBadge status={project.status} size="md" />
+                  <StatusBadge status={project.progress === 100 ? 'Completed' : project.status} size="md" />
                 </button>
 
                 {showStatusMenu && (
@@ -267,7 +267,7 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
                 )}
               </div>
             ) : (
-              <StatusBadge status={project.status} size="md" />
+              <StatusBadge status={project.progress === 100 ? 'Completed' : project.status} size="md" />
             )}
           </div>
         </div>
@@ -279,7 +279,7 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
               <Sliders className="w-3.5 h-3.5 text-slate-400" />
               <span>制作交付进度</span>
             </span>
-            <span className={`font-mono font-bold text-sm ${project.progress === 100 ? 'text-emerald-600' : 'text-spark-600'}`}>
+            <span className={`font-mono font-bold text-sm ${project.progress === 100 || project.status === 'Completed' ? 'text-emerald-600' : 'text-spark-600'}`}>
               {project.progress}%
             </span>
           </div>
@@ -288,7 +288,7 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
           <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
-                project.status === 'Completed'
+                project.status === 'Completed' || project.progress === 100
                   ? 'bg-emerald-500'
                   : project.status === 'Review'
                   ? 'bg-purple-600'

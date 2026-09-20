@@ -7,12 +7,14 @@ import { Calendar, ChevronRight } from 'lucide-react';
 export const RecentProjects: React.FC = () => {
   const { projects, setSelectedProjectId, setActiveTab } = useApp();
 
-  // 未完成项目优先排在前，已完成的项目自动沉底
+  // 未完成项目优先排在前，已完成的项目（status === 'Completed' 或 progress >= 100）自动沉底
+  const isFinished = (p: { status: string; progress: number }) => p.status === 'Completed' || p.progress >= 100;
+
   const sortedProjects = [...projects].sort((a, b) => {
-    const aCompleted = a.status === 'Completed';
-    const bCompleted = b.status === 'Completed';
-    if (aCompleted !== bCompleted) {
-      return aCompleted ? 1 : -1;
+    const aDone = isFinished(a);
+    const bDone = isFinished(b);
+    if (aDone !== bDone) {
+      return aDone ? 1 : -1;
     }
     const timeA = new Date(a.updatedAt || a.createdAt).getTime();
     const timeB = new Date(b.updatedAt || b.createdAt).getTime();
@@ -29,6 +31,9 @@ export const RecentProjects: React.FC = () => {
   return (
     <div className="space-y-3">
       {recent.map(project => {
+        const isProjectDone = isFinished(project);
+        const effectiveStatus = isProjectDone ? 'Completed' : project.status;
+
         return (
           <div
             key={project.id}
@@ -45,7 +50,7 @@ export const RecentProjects: React.FC = () => {
                   {project.type}
                 </span>
               </div>
-              <StatusBadge status={project.status} size="sm" />
+              <StatusBadge status={effectiveStatus} size="sm" />
             </div>
 
             {/* Title */}
@@ -57,14 +62,14 @@ export const RecentProjects: React.FC = () => {
             <div className="mb-3">
               <div className="flex items-center justify-between text-[11px] font-semibold mb-1">
                 <span className="text-slate-400">制作进度</span>
-                <span className={project.progress === 100 ? 'text-emerald-600 font-bold' : 'text-slate-700'}>
+                <span className={isProjectDone ? 'text-emerald-600 font-bold' : 'text-slate-700'}>
                   {project.progress}%
                 </span>
               </div>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${
-                    project.status === 'Completed'
+                    isProjectDone
                       ? 'bg-emerald-500'
                       : project.status === 'Review'
                       ? 'bg-purple-600'
