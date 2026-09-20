@@ -10,8 +10,8 @@ export const AttentionList: React.FC = () => {
   // 根据当前角色判定待办提醒项
   const attentionItems = projects.filter(project => {
     if (currentRole === 'Client') {
-      // 客户需处理处于【待审核】状态的项目
-      return project.status === 'Review';
+      // 客户需处理处于【待审核】状态的项目，以及刚提交待接单的【新需求】
+      return project.status === 'Review' || project.status === 'Requested';
     } else {
       // 管理员需接单【待接单】项目或处理【制作中且特急】项目
       return project.status === 'Requested' || (project.status === 'Working' && project.priority === 'Urgent');
@@ -38,6 +38,7 @@ export const AttentionList: React.FC = () => {
     <div className="space-y-2.5">
       {attentionItems.map(project => {
         const isClientReview = currentRole === 'Client' && project.status === 'Review';
+        const isClientRequested = currentRole === 'Client' && project.status === 'Requested';
         const isAdminRequested = currentRole === 'Admin' && project.status === 'Requested';
 
         return (
@@ -46,6 +47,8 @@ export const AttentionList: React.FC = () => {
             className={`p-3.5 rounded-2xl border transition-all ${
               isClientReview
                 ? 'bg-gradient-to-br from-purple-50/70 via-white to-purple-50/40 border-purple-200/90 shadow-soft ring-1 ring-purple-100'
+                : isClientRequested || isAdminRequested
+                ? 'bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/30 border-indigo-100 shadow-soft'
                 : 'bg-white border-slate-100 shadow-soft hover:border-slate-200'
             }`}
           >
@@ -68,6 +71,11 @@ export const AttentionList: React.FC = () => {
                 <span className="inline-flex items-center gap-1 text-purple-700 font-medium">
                   <Sparkles className="w-3.5 h-3.5 text-spark-600 shrink-0" />
                   预览稿已就绪，请验收审核并确认！
+                </span>
+              ) : isClientRequested ? (
+                <span className="inline-flex items-center gap-1 text-indigo-700 font-medium">
+                  <FileQuestion className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  新需求已提报，设计团队正在接单排期中
                 </span>
               ) : isAdminRequested ? (
                 <span className="inline-flex items-center gap-1 text-indigo-700 font-medium">
