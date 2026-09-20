@@ -23,7 +23,8 @@ import {
   Eye,
   X,
   UploadCloud,
-  Film
+  Film,
+  Trash2
 } from 'lucide-react';
 
 const STATUS_OPTIONS: { id: ProjectStatus; label: string }[] = [
@@ -62,7 +63,8 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
     uploadAssetToProject,
     approveProject, 
     requestChanges, 
-    addComment 
+    addComment,
+    deleteProject
   } = useApp();
 
   const project = projects.find(p => p.id === projectId);
@@ -72,6 +74,7 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
     type: 'approve' | 'request_changes';
   }>({ isOpen: false, type: 'approve' });
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [commentInput, setCommentInput] = useState('');
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
@@ -201,6 +204,15 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
             {project.id}
           </span>
           <PriorityBadge priority={project.priority} />
+          {currentRole === 'Admin' && (
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors ml-0.5"
+              title="删除该项目"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -345,18 +357,60 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
         </div>
       </div>
 
-      {/* 市场多语言 */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-soft space-y-2">
+      {/* 市场多语言与本地化进度矩阵 */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-soft space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">
-            目标市场与本地化覆盖 ({project.markets.length})
+            目标市场与多语言本地化矩阵 ({project.markets.length})
           </span>
-          <span className="text-[10px] text-slate-400">各语种排版适配</span>
+          <span className="text-[10px] text-slate-400">各语种交付排期</span>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {project.markets.map(m => (
-            <MarketPill key={m} language={m} size="md" />
-          ))}
+
+        {/* 多语言详细进度状态列表 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {project.markets.map(m => {
+            const isFinished = project.assets.some(a => a.isFinal && a.languages?.includes(m));
+            const isInProgress = !isFinished && (
+              project.assets.some(a => !a.isFinal && a.languages?.includes(m)) ||
+              (m === '韩语' && (project.latestUpdate.includes('韩') || project.description.includes('韩')))
+            );
+
+            return (
+              <div 
+                key={m}
+                className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                  isFinished 
+                    ? 'bg-emerald-50/60 border-emerald-200 text-emerald-950' 
+                    : isInProgress
+                    ? 'bg-amber-50/60 border-amber-200 text-amber-950 ring-1 ring-amber-100'
+                    : 'bg-slate-50 border-slate-100 text-slate-600'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <MarketPill language={m} size="sm" />
+                  <span className="text-xs font-bold text-slate-800">{m}</span>
+                </div>
+
+                <div>
+                  {isFinished ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-md">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      <span>已完成 v2.3</span>
+                    </span>
+                  ) : isInProgress ? (
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-700 bg-amber-100/90 px-2 py-0.5 rounded-md">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      <span>今日进行中</span>
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-medium text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded-md">
+                      排期待翻译
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -982,6 +1036,47 @@ export const ProjectDetail: React.FC<{ projectId: string; onBack: () => void }> 
         onConfirmApprove={note => approveProject(project.id, note)}
         onConfirmRequestChanges={feedback => requestChanges(project.id, feedback)}
       />
+
+      {/* 删除项目确认弹窗 */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1.5">
+              <h3 className="text-base font-extrabold text-slate-900">
+                确认删除此项目？
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                即将删除《<span className="font-semibold text-slate-800">{project.title}</span>》（{project.id}）。此操作不可撤销，云端与本地记录将被清除。
+              </p>
+            </div>
+
+            <div className="flex gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteProject(project.id);
+                  setShowDeleteModal(false);
+                  onBack();
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md transition-colors"
+              >
+                确认删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

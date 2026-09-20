@@ -37,6 +37,7 @@ export interface AppContextType {
   requestChanges: (id: string, feedback: string) => void;
   addComment: (id: string, content: string) => void;
   resetToDemoData: () => void;
+  deleteProject: (id: string) => void;
   reconnectCloud: () => Promise<void>;
 }
 

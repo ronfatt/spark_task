@@ -16,6 +16,7 @@ import { isSupabaseConfigured } from '../lib/supabase';
 import { 
   fetchProjectsFromSupabase, 
   saveProjectToSupabase, 
+  deleteProjectFromSupabase,
   subscribeToSupabaseProjects 
 } from '../services/projectService';
 import { 
@@ -23,8 +24,36 @@ import {
   createProjectAssetFromFile 
 } from '../services/storageService';
 
-const STORAGE_KEY = 'sparkone_creative_hub_projects_v3_zh';
+const STORAGE_KEY = 'sparkone_creative_hub_projects_v5_clean';
 const ADMIN_STORAGE_KEY = 'sparkone_admin_unlocked_v1';
+
+const DEMO_SAMPLE_IDS = new Set([
+  '项目-1092',
+  '项目-1095',
+  '项目-1098',
+  '项目-1101',
+  '项目-1087',
+  '项目-1079',
+]);
+
+export function filterOutSampleProjects(list: CreativeProject[]): CreativeProject[] {
+  if (!Array.isArray(list)) return [];
+  return list.filter(p => {
+    if (!p) return false;
+    if (DEMO_SAMPLE_IDS.has(p.id)) return false;
+    if (p.title && (
+      p.title.includes('白金尊享版') ||
+      p.title.includes('商户端移动应用') ||
+      p.title.includes('全球投资人路演') ||
+      p.title.includes('极速结算 30秒') ||
+      p.title.includes('年度主品牌设计') ||
+      p.title.includes('越南新年限定')
+    )) {
+      return false;
+    }
+    return true;
+  });
+}
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Check if URL has ?admin=true or if previously unlocked
@@ -60,15 +89,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Initialize projects from localStorage or default seed data
   const [projects, setProjects] = useState<CreativeProject[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        return JSON.parse(saved);
+      if (typeof window !== 'undefined') {
+        // Clear all legacy storage keys containing previous demo samples
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && (k.startsWith('sparkone_creative_hub_projects_') || k.includes('projects'))) {
+            if (k !== STORAGE_KEY) {
+              localStorage.removeItem(k);
+            }
+          }
+        }
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const cleaned = filterOutSampleProjects(parsed);
+          if (cleaned.length > 0) return cleaned;
+        }
       }
     } catch (e) {
       console.error('Failed to load projects from storage', e);
     }
     return INITIAL_PROJECTS;
   });
+
+  // Proactively purge sample projects on mount if lingering in state
+  useEffect(() => {
+    setProjects(prev => {
+      const cleaned = filterOutSampleProjects(prev);
+      if (cleaned.length === 0) return INITIAL_PROJECTS;
+      if (cleaned.length !== prev.length) return cleaned;
+      return prev;
+    });
+  }, []);
 
   // Sync state to local storage cache
   useEffect(() => {
@@ -96,12 +148,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const cloudData = await fetchProjectsFromSupabase();
       if (cloudData && cloudData.length > 0) {
-        setProjects(cloudData);
+        const cleaned = filterOutSampleProjects(cloudData);
+        if (cleaned.length > 0) {
+          setProjects(cleaned);
+        } else {
+          setProjects(INITIAL_PROJECTS);
+          for (const p of INITIAL_PROJECTS) {
+            await saveProjectToSupabase(p);
+          }
+        }
       } else if (cloudData && cloudData.length === 0 && !isInitialLoadDone.current) {
         // If Supabase table is completely empty on first launch, upload initial demo projects
         for (const p of INITIAL_PROJECTS) {
           await saveProjectToSupabase(p);
         }
+        setProjects(INITIAL_PROJECTS);
       }
       setIsCloudConnected(true);
     } catch (err) {
@@ -535,9 +596,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const deleteProject = (id: string) => {
+    setProjects(prev => prev.filter(p => p.id !== id));
+    if (selectedProjectId === id) {
+      setSelectedProjectId(null);
+    }
+    if (isSupabaseConfigured()) {
+      deleteProjectFromSupabase(id).catch(err => console.error('Cloud delete error:', err));
+    }
+  };
+
   const resetToDemoData = () => {
     setProjects(INITIAL_PROJECTS);
-    localStorage.removeItem(STORAGE_KEY);
+    try {
+      if (typeof window !== 'undefined') {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && (k.startsWith('sparkone_creative_hub_projects_') || k.includes('projects'))) {
+            localStorage.removeItem(k);
+          }
+        }
+      }
+    } catch (_) {}
     if (isSupabaseConfigured()) {
       INITIAL_PROJECTS.forEach(p => syncProjectToCloud(p));
     }
@@ -573,6 +653,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         requestChanges,
         addComment,
         resetToDemoData,
+        deleteProject,
         reconnectCloud,
       }}
     >
