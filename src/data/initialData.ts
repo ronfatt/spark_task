@@ -46,7 +46,7 @@ export const INITIAL_PROJECTS: CreativeProject[] = [
     activity: [
       {
         id: 'act-202',
-        author: '黄伟 (创意总监)',
+        author: 'AI 创意总监',
         role: 'Admin',
         content: '需求已确认，正在进行第 1 版拉丝钛金属与紫晶透光的 3D 质感探索效果图制作。',
         timestamp: '今天 16:15',
@@ -73,7 +73,7 @@ export const INITIAL_PROJECTS: CreativeProject[] = [
     priority: 'High',
     status: 'Working',
     progress: 35,
-    owner: '黄伟 (创意总监)',
+    owner: 'AI 创意总监',
     clientName: 'SparkOne 项目组',
     createdAt: '2026-09-18T09:00:00Z',
     updatedAt: '2026-09-20T10:30:00Z',
@@ -97,7 +97,7 @@ export const INITIAL_PROJECTS: CreativeProject[] = [
     activity: [
       {
         id: 'c-3',
-        author: '黄伟 (创意总监)',
+        author: 'AI 创意总监',
         role: 'Admin',
         content: '韩文版本今日（9月20日）正在本地化翻译与排版制作中，完成后将上传韩文初稿供审核。',
         timestamp: '今天 10:30',
@@ -105,7 +105,7 @@ export const INITIAL_PROJECTS: CreativeProject[] = [
       },
       {
         id: 'c-2',
-        author: '黄伟 (创意总监)',
+        author: 'AI 创意总监',
         role: 'Admin',
         content: '《SparkOne 项目介绍 - pdf》v2.3 中文完整版制作完毕，已归档成品。启动多语言翻译矩阵（韩文、日文、英文、越南文、泰文、印尼文）。',
         timestamp: '9月19日 18:00',

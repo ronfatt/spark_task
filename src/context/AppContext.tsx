@@ -24,7 +24,7 @@ import {
   createProjectAssetFromFile 
 } from '../services/storageService';
 
-const STORAGE_KEY = 'sparkone_creative_hub_projects_v7_ordered';
+const STORAGE_KEY = 'sparkone_creative_hub_projects_v8_ai_dir';
 const ADMIN_STORAGE_KEY = 'sparkone_admin_unlocked_v1';
 
 const DEMO_SAMPLE_IDS = new Set([
@@ -347,7 +347,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (p.id !== id) return p;
         const newComment: ActivityComment = {
           id: `act-${Date.now()}`,
-          author: '黄伟 (创意总监)',
+          author: 'AI 创意总监',
           role: 'Admin',
           content: '设计团队已接单排期，项目状态变更为【制作中】。',
           timestamp: `今天 ${formattedTime}`,
@@ -356,7 +356,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const updated: CreativeProject = {
           ...p,
           status: 'Working',
-          owner: p.owner === '待分配' ? '黄伟 (创意总监)' : p.owner,
+          owner: p.owner === '待分配' ? 'AI 创意总监' : p.owner,
           progress: p.progress === 0 ? 15 : p.progress,
           updatedAt: now.toISOString(),
           latestUpdate: '设计团队已接单，创意制作中。',
@@ -378,7 +378,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const updateText = note || `制作进度已更新至 ${progress}%。`;
         const newComment: ActivityComment = {
           id: `act-${Date.now()}`,
-          author: '黄伟 (设计团队)',
+          author: 'AI 创意总监',
           role: 'Admin',
           content: updateText,
           timestamp: `今天 ${formattedTime}`,
@@ -443,7 +443,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (p.id !== id) return p;
         const newComment: ActivityComment = {
           id: `act-${Date.now()}`,
-          author: '黄伟 (设计团队)',
+          author: 'AI 创意总监',
           role: 'Admin',
           content: `上传了新设计稿《${previewTitle}》，请客户方验收审核。`,
           timestamp: `今天 ${formattedTime}`,
@@ -489,7 +489,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (p.id !== projectId) return p;
         const newComment: ActivityComment = {
           id: `act-${Date.now()}`,
-          author: '黄伟 (设计团队)',
+          author: 'AI 创意总监',
           role: 'Admin',
           content: `归档交付了新素材《${file.name}》（${asset.size}，分类：${category}）。`,
           timestamp: `今天 ${formattedTime}`,
