@@ -24,7 +24,7 @@ import {
   createProjectAssetFromFile 
 } from '../services/storageService';
 
-const STORAGE_KEY = 'sparkone_creative_hub_projects_v8_ai_dir';
+const STORAGE_KEY = 'sparkone_creative_hub_projects_v9_clean_done';
 const ADMIN_STORAGE_KEY = 'sparkone_admin_unlocked_v1';
 
 const DEMO_SAMPLE_IDS = new Set([
@@ -112,13 +112,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_PROJECTS;
   });
 
-  // Proactively purge sample projects on mount if lingering in state
+  // Proactively purge sample projects and normalize 100% progress to Completed status
   useEffect(() => {
     setProjects(prev => {
-      const cleaned = filterOutSampleProjects(prev);
+      const cleaned = filterOutSampleProjects(prev).map(p => {
+        if (p.progress >= 100 && p.status !== 'Completed') {
+          return { ...p, status: 'Completed' as ProjectStatus };
+        }
+        return p;
+      });
       if (cleaned.length === 0) return INITIAL_PROJECTS;
-      if (cleaned.length !== prev.length) return cleaned;
-      return prev;
+      return cleaned;
     });
   }, []);
 
@@ -148,7 +152,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const cloudData = await fetchProjectsFromSupabase();
       if (cloudData && cloudData.length > 0) {
-        const cleaned = filterOutSampleProjects(cloudData);
+        const cleaned = filterOutSampleProjects(cloudData).map(p => {
+          if (p.progress >= 100 && p.status !== 'Completed') {
+            return { ...p, status: 'Completed' as ProjectStatus };
+          }
+          return p;
+        });
         if (cleaned.length > 0) {
           setProjects(cleaned);
         } else {

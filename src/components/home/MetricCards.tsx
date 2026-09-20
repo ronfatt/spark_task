@@ -10,11 +10,13 @@ interface MetricCardsProps {
 export const MetricCards: React.FC<MetricCardsProps> = ({ onSelectStatusFilter }) => {
   const { projects, setActiveTab } = useApp();
 
+  const isFinished = (p: { status: string; progress: number }) => p.status === 'Completed' || p.progress >= 100;
+
   const counts = {
-    Requested: projects.filter(p => p.status === 'Requested').length,
-    Working: projects.filter(p => p.status === 'Working').length,
-    Review: projects.filter(p => p.status === 'Review').length,
-    Completed: projects.filter(p => p.status === 'Completed').length,
+    Requested: projects.filter(p => p.status === 'Requested' && !isFinished(p)).length,
+    Working: projects.filter(p => p.status === 'Working' && !isFinished(p)).length,
+    Review: projects.filter(p => p.status === 'Review' && !isFinished(p)).length,
+    Completed: projects.filter(p => isFinished(p)).length,
   };
 
   const handleCardClick = (status: ProjectStatus) => {

@@ -7,8 +7,14 @@ import { MarketPill } from '../common/MarketPill';
 export const AttentionList: React.FC = () => {
   const { projects, currentRole, setSelectedProjectId, setActiveTab, acceptProject } = useApp();
 
-  // 根据当前角色判定待办提醒项
+  const isFinished = (p: { status: string; progress: number }) => p.status === 'Completed' || p.progress >= 100;
+
+  // 根据当前角色判定待办提醒项（已完成或进度满100%的项目绝不进入待办）
   const attentionItems = projects.filter(project => {
+    if (isFinished(project)) {
+      return false;
+    }
+
     if (currentRole === 'Client') {
       // 客户需处理处于【待审核】状态的项目，以及刚提交待接单的【新需求】
       return project.status === 'Review' || project.status === 'Requested';
