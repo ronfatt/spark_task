@@ -7,7 +7,19 @@ import { Calendar, ChevronRight } from 'lucide-react';
 export const RecentProjects: React.FC = () => {
   const { projects, setSelectedProjectId, setActiveTab } = useApp();
 
-  const recent = projects.slice(0, 5);
+  // 未完成项目优先排在前，已完成的项目自动沉底
+  const sortedProjects = [...projects].sort((a, b) => {
+    const aCompleted = a.status === 'Completed';
+    const bCompleted = b.status === 'Completed';
+    if (aCompleted !== bCompleted) {
+      return aCompleted ? 1 : -1;
+    }
+    const timeA = new Date(a.updatedAt || a.createdAt).getTime();
+    const timeB = new Date(b.updatedAt || b.createdAt).getTime();
+    return timeB - timeA;
+  });
+
+  const recent = sortedProjects.slice(0, 5);
 
   const handleOpenProject = (id: string) => {
     setSelectedProjectId(id);

@@ -67,6 +67,17 @@ export const ProjectList: React.FC<{ initialStatusFilter?: ProjectStatus | 'All'
       }
     }
     return true;
+  }).sort((a, b) => {
+    // 已完成的项目自动沉底，未完成的始终排在前面
+    const aCompleted = a.status === 'Completed';
+    const bCompleted = b.status === 'Completed';
+    if (aCompleted !== bCompleted) {
+      return aCompleted ? 1 : -1;
+    }
+    // 相同状态按最新更新/创建时间倒序排
+    const timeA = new Date(a.updatedAt || a.createdAt).getTime();
+    const timeB = new Date(b.updatedAt || b.createdAt).getTime();
+    return timeB - timeA;
   });
 
   return (
