@@ -24,7 +24,7 @@ import {
   createProjectAssetFromFile 
 } from '../services/storageService';
 
-const STORAGE_KEY = 'sparkone_creative_hub_projects_v5_clean';
+const STORAGE_KEY = 'sparkone_creative_hub_projects_v6_real';
 const ADMIN_STORAGE_KEY = 'sparkone_admin_unlocked_v1';
 
 const DEMO_SAMPLE_IDS = new Set([
